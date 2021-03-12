@@ -39,3 +39,5 @@ pip-log.txt
 
 ## paver generated files
 /paver-minilib.zip
+
+.DS_Store
