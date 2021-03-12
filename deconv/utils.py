@@ -12,6 +12,21 @@ def rmse(X, Y, axis=1):
 def mae(X, Y, axis=1):
     return np.mean(np.abs(X - Y), axis=axis)
 
+def quantile_normalize(x):
+    """
+    input: dataframe with numerical columns
+    output: dataframe with quantile normalized values
+    """
+    df = pd.DataFrame(x)
+    df_sorted = pd.DataFrame(np.sort(df.values,
+                                     axis=0), 
+                             index=df.index, 
+                             columns=df.columns)
+    df_mean = df_sorted.mean(axis=1)
+    df_mean.index = np.arange(1, len(df_mean) + 1)
+    df_qn =df.rank(method="min").stack().astype(int).map(df_mean).unstack()
+    return(np.array(df_qn))
+
 
 def semi_synth_data(ref_samples, n_samples, phenotype, sigma, random_state=23,
     noise_type="log_gaussian", proportions=None, snr=None):
@@ -32,8 +47,9 @@ def semi_synth_data(ref_samples, n_samples, phenotype, sigma, random_state=23,
         local_ground_truth = local_ground_truth / np.sum(local_ground_truth, axis=0) * ground_truth[i, :]
         data = data + ref_temp @ local_ground_truth
     if noise_type == "log_gaussian":
-        noise = rng.randn(*data.shape)
-        data += 2 ** (noise * sigma)
+        if sigma != 0:
+            noise = rng.randn(*data.shape)
+            data += 2 ** (noise * sigma)
     elif noise_type == "gaussian":
         sigma_star = np.sqrt(np.mean(data.T @ data) / (10 ** (snr / 10)))
         noise = rng.randn(*data.shape)
