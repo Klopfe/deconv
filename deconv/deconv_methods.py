@@ -115,7 +115,7 @@ def cibersort(signature, data):
     tol=1e-3
     max_iter = 50000
     estimated_proportions = []
-    data = quantile_normalize(data)
+    # data = quantile_normalize(data)
     signature = (signature - np.mean(signature)) / np.std(signature)
     for i in range(n_try):
         coefs_temp = single_cibersort(signature, data[:, i], tol, max_iter)
