@@ -28,7 +28,7 @@ def quantile_normalize(x):
     return(np.array(df_qn))
 
 
-def semi_synth_data(ref_samples, n_samples, phenotype, sigma, random_state=23,
+def semi_synth_data(ref_samples, n_samples, phenotype, sigma=None, random_state=23,
     noise_type="log_gaussian", proportions=None, snr=None):
     rng = check_random_state(random_state)
     n_cells = len(np.unique(phenotype))
@@ -47,8 +47,13 @@ def semi_synth_data(ref_samples, n_samples, phenotype, sigma, random_state=23,
         local_ground_truth = local_ground_truth / np.sum(local_ground_truth, axis=0) * ground_truth[i, :]
         data = data + ref_temp @ local_ground_truth
     if noise_type == "log_gaussian":
-        if sigma != 0:
-            noise = rng.randn(*data.shape)
+        noise = rng.randn(*data.shape)
+        if sigma is None:
+            prop_noise = rng.uniform(size=n_samples)
+            data += 2 ** (noise * prop_noise * 11.6)
+        elif sigma ==  0.0:
+            data = data
+        else:
             data += 2 ** (noise * sigma)
     elif noise_type == "gaussian":
         sigma_star = np.sqrt(np.mean(data.T @ data) / (10 ** (snr / 10)))
