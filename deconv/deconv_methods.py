@@ -123,10 +123,10 @@ def cibersort(signature, data):
     
     return np.array(estimated_proportions)
 
-def deconv_ssvr(signature, data):
+def deconv_ssvr(signature, data, rnaseq=False):
     n_try = data.shape[1]
     tol = 1e-3
-    max_iter = 10000
+    max_iter = 50000
     n_samples = data.shape[0]
     idx_train = np.arange(0, n_samples)
     idx_val = np.arange(0, n_samples)
@@ -139,17 +139,18 @@ def deconv_ssvr(signature, data):
         model = SimplexSVR(max_iter=max_iter)
         criterion = HeldOutMSE(idx_train, idx_val)
         monitor = Monitor()
-        algo = ImplicitForward(n_iter_jac=500, tol_jac=1e-3, max_iter=max_iter)
+        algo = ImplicitForward(n_iter_jac=1000, tol_jac=1e-3, max_iter=max_iter)
         optimizer = GradientDescent(
             n_outer=10, tol=tol, p_grad0=0.5, verbose=True)
         
-        C0 = 0.1
-        epsilon0 = 1.0 / np.std(signature)
+
+        C0 = 1e-1
+        epsilon0 = 1 / np.std(signature)
         grad_search(
             algo, criterion, model, optimizer, X, y, np.array([C0, epsilon0]),
             monitor)
         supp, dense, jac1 = get_beta_jac_iterdiff(
-            X, y, np.log(monitor.alphas[np.argmin(np.array(monitor.objs))]),
+            X, y, np.log(monitor.alphas[-1]),
             tol=tol, model=model, max_iter=max_iter)
         proportions = np.zeros(X.shape[1])
         proportions[supp] = dense
