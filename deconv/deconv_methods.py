@@ -140,11 +140,12 @@ def deconv_ssvr(signature, data, rnaseq=False):
         criterion = HeldOutMSE(idx_train, idx_val)
         monitor = Monitor()
         algo = ImplicitForward(n_iter_jac=1000, tol_jac=1e-3, max_iter=max_iter)
+        # algo = Forward()
         optimizer = GradientDescent(
-            n_outer=10, tol=tol, p_grad0=0.5, verbose=True)
+            n_outer=20, tol=tol, p_grad0=0.5, verbose=True)
         
 
-        C0 = 1e-1
+        C0 = 1.0
         epsilon0 = 1 / np.std(signature)
         grad_search(
             algo, criterion, model, optimizer, X, y, np.array([C0, epsilon0]),

@@ -22,23 +22,22 @@ df_data = pd.read_pickle("res_simu_microarray.pkl")
 methods = ["cibersort", "SOLS", "ssvr"]
 
 fig, axarr = plt.subplots(
-    1, 2, sharex=False, sharey=False,
+    1, 1, sharex=False, sharey=False,
     figsize=[14, 4], constrained_layout=True)
 
 
-df_noise = df_data[df_data['noise_type'] == "log_gaussian"]
-for i, method in enumerate(methods):
-    df_temp = df_noise[df_noise['method'] == method]
-    import ipdb; ipdb.set_trace()
-    axarr[0].plot(df_temp['noise_level'][i * 2], df_temp['mae'][i * 2][:, 1], color=dict_color[method], marker='', label=dict_method[method])
-    axarr[0].fill_between(df_temp['noise_level'][i * 2], df_temp['mae'][i * 2][:, 0], df_temp['mae'][i * 2][:, 2], color=dict_color[method], alpha=.1)
-axarr[0].legend()
+# df_noise = df_data[df_data['noise_type'] == "log_gaussian"]
+# for i, method in enumerate(methods):
+#     df_temp = df_noise[df_noise['method'] == method]
+#     import ipdb; ipdb.set_trace()
+#     axarr[0].plot(df_temp['noise_level'][i * 2], df_temp['mae'][i * 2][:, 1], color=dict_color[method], marker='', label=dict_method[method])
+#     axarr[0].fill_between(df_temp['noise_level'][i * 2], df_temp['mae'][i * 2][:, 0], df_temp['mae'][i * 2][:, 2], color=dict_color[method], alpha=.1)
+# axarr[0].legend()
 
-df_noise = df_data[df_data['noise_type'] == "laplacian"]
 for i, method in enumerate(methods):
-    df_temp = df_noise[df_noise['method'] == method]
-    axarr[1].plot(df_temp['noise_level'][i * 2 + 1], df_temp['mae'][i * 2+ 1][:, 1], color=dict_color[method], marker='', label=dict_method[method])
-    axarr[1].fill_between(df_temp['noise_level'][i * 2 +1 ], df_temp['mae'][i * 2 +1][:, 0], df_temp['mae'][i * 2+1][:, 2], color=dict_color[method], alpha=.1)
+    df_temp = df_data[df_data['method'] == method]
+    axarr.plot(df_temp['noise_level'][i], df_temp['mae'][i][:, 1], color=dict_color[method], marker='', label=dict_method[method])
+    axarr.fill_between(df_temp['noise_level'][i], df_temp['mae'][i][:, 0], df_temp['mae'][i][:, 2], color=dict_color[method], alpha=.1)
 
-axarr[1].legend()
+axarr.legend()
 fig.show()

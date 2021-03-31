@@ -18,7 +18,7 @@ X = np.array(X)
 X = np.delete(X, 4, axis=1)
 ref.sort_index(inplace=True)
 phenotype = np.array(["Jurkat", "Jurkat", "Jurkat", "IM-9", "IM-9", "IM-9", "Raji", "Raji", "Raji", "THP1", "THP1", "THP1"])
-n_try = 100
+n_try = 10
 num = 30
 ref = np.array(ref)
 
@@ -27,11 +27,10 @@ dict_method["cibersort"] = cibersort
 dict_method["ssvr"] = deconv_ssvr
 dict_method["SOLS"] = SOLS
 
-list_noise = ["log_gaussian", "laplacian"]
+list_noise = ["log_gaussian"]
 
 dict_noise_level = {}
 dict_noise_level["log_gaussian"] = np.linspace(0, 11.6, num=num)
-dict_noise_level["laplacian"] = np.linspace(1, 30, num=num)
 
 
 methods = ["cibersort", "SOLS", "ssvr"]
@@ -58,8 +57,8 @@ def increased_noise(method, noise_type='log_gaussian'):
         mae_temp = np.sort(mae_temp)
         rmse_temp = np.sort(rmse_temp)
 
-        low_CI = int(n_try * 0.05)
-        high_CI = int(n_try * 0.95)
+        low_CI = int(n_try * 0.1)
+        high_CI = int(n_try * 0.9)
         # low_CI = 0
         # high_CI = n_try - 1
 
