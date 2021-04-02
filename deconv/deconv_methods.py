@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sparse_ho.algo.forward import get_beta_jac_iterdiff
-from sparse_ho import ImplicitForward
+from sparse_ho import Forward
 from sparse_ho import grad_search, hyperopt_wrapper
 from sparse_ho.models import SimplexSVR
 from sparse_ho.criterion import HeldOutMSE, CrossVal
@@ -57,7 +57,10 @@ def Linear_regression_constrained(X,y, intercept=False):
     solvers.options['show_progress'] = False
 
     sol= solvers.qp(Q,L,G,h,A,b)
-    solution=sol['x'][:n]
+    if intercept:
+        solution = sol['x'][1:(n+1)]
+    else:
+        solution=sol['x'][:n]
     return(np.asarray(solution).flatten())
 
 def SOLS(signature, data):
@@ -139,14 +142,14 @@ def deconv_ssvr(signature, data, rnaseq=False):
         model = SimplexSVR(max_iter=max_iter)
         criterion = HeldOutMSE(idx_train, idx_val)
         monitor = Monitor()
-        algo = ImplicitForward(n_iter_jac=1000, tol_jac=1e-3, max_iter=max_iter)
-        # algo = Forward()
+        # algo = ImplicitForward(n_iter_jac=1000, tol_jac=1e-3, max_iter=max_iter)
+        algo = Forward()
         optimizer = GradientDescent(
-            n_outer=20, tol=tol, p_grad0=0.5, verbose=True)
+            n_outer=20, tol=tol, p_grad0=0.2, verbose=True)
         
 
         C0 = 1.0
-        epsilon0 = 1 / np.std(signature)
+        epsilon0 = 0.1
         grad_search(
             algo, criterion, model, optimizer, X, y, np.array([C0, epsilon0]),
             monitor)

@@ -45,38 +45,40 @@ dict_tumor["cibersort"] = tumor_content
 
 dict_ref = {}
 dict_ref["cibersort"] = ref
-dict_X["ssvr"] = X
-dict_X["SOLS"] = X
+
+
+
+X2 = pd.read_csv("/Users/qklopfenstein/Documents/these/datasets/deconvolution/GSE11103/new_sig.txt", header=0, index_col=0, delimiter="\t")
+ref = pd.read_csv("/Users/qklopfenstein/Documents/these/datasets/deconvolution/GSE11103/GSE11103_X_complete.txt",header=0,index_col=0, delimiter="\t")
+tumor_content = pd.read_csv("/Users/qklopfenstein/Documents/these/datasets/deconvolution/tumor_content/tumor_content.txt", header=0, index_col=0, delimiter="\t")
+
+ref = ref[ref.index.isin(tumor_content.index)]
+tumor_content = tumor_content[tumor_content.index.isin(ref.index)]
+
+ref = ref[ref.index.isin(X2.index)]
+tumor_content = tumor_content[tumor_content.index.isin(X2.index)]
+X2.sort_index(inplace=True)
+
+genes_to_keep = ref.index.isin(X2.index)
+X2 = np.array(X2)
+# X = np.delete(X, 4, axis=1)
+
+ref.sort_index(inplace=True)
+ref = np.array(ref)
+
+tumor_content.sort_index(inplace=True)
+tumor_content = np.array(tumor_content)
+tumor_content = np.mean(tumor_content, axis=1)
+
+
+dict_X["ssvr"] = X2
+dict_X["SOLS"] = X2
 
 dict_tumor["ssvr"] = tumor_content
 dict_tumor["SOLS"] = tumor_content
 
 dict_ref["ssvr"] = ref
 dict_ref["SOLS"] = ref
-# X2 = pd.read_csv("/Users/qklopfenstein/Documents/these/datasets/deconvolution/GSE11103/new_sig.txt", header=0, index_col=0, delimiter="\t")
-# ref = pd.read_csv("/Users/qklopfenstein/Documents/these/datasets/deconvolution/GSE11103/GSE11103_X_complete.txt",header=0,index_col=0, delimiter="\t")
-# tumor_content = pd.read_csv("/Users/qklopfenstein/Documents/these/datasets/deconvolution/tumor_content/tumor_content.txt", header=0, index_col=0, delimiter="\t")
-
-# ref = ref[ref.index.isin(tumor_content.index)]
-# tumor_content = tumor_content[tumor_content.index.isin(ref.index)]
-
-# ref = ref[ref.index.isin(X2.index)]
-# tumor_content = tumor_content[tumor_content.index.isin(X2.index)]
-# X2.sort_index(inplace=True)
-
-# genes_to_keep = ref.index.isin(X2.index)
-# X2 = np.array(X2)
-# # X = np.delete(X, 4, axis=1)
-
-# ref.sort_index(inplace=True)
-# ref = np.array(ref)
-
-# tumor_content.sort_index(inplace=True)
-# tumor_content = np.array(tumor_content)
-# tumor_content = np.mean(tumor_content, axis=1)
-
-
-
 
 phenotype = np.array(["Jurkat", "Jurkat", "Jurkat", "IM-9", "IM-9", "IM-9", "Raji", "Raji", "Raji", "THP1", "THP1", "THP1"])
 n_try = 5
@@ -110,14 +112,14 @@ def fun_to_run(method):
             else:
                 data_noised = data_tumor
             estimated = dict_method[method](dict_X[method], data_noised)
-            # if method == "cibersort":
-            RMSE[i, j] = np.mean(rmse(estimated, ground_truth.T))
-            MAE[i, j] = np.mean(mae(estimated, ground_truth.T))
-            Corr[i, j] = np.corrcoef(estimated.flatten(), ground_truth.T.flatten())[0, 1]
-            # else:
-            #     RMSE[i, j] = np.mean(rmse(estimated[:, 0:-1] / np.sum(estimated[:, 0:-1], axis=1)[:, np.newaxis], ground_truth.T))
-            #     MAE[i, j] = np.mean(mae(estimated[:, 0:-1] / np.sum(estimated[:, 0:-1], axis=1)[:, np.newaxis], ground_truth.T))
-            #     Corr[i, j] = np.corrcoef((estimated[:, 0:-1] / np.sum(estimated[:, 0:-1], axis=1)[:, np.newaxis]).flatten(), ground_truth.T.flatten())[0, 1]
+            if method == "cibersort":
+                RMSE[i, j] = np.mean(rmse(estimated, ground_truth.T))
+                MAE[i, j] = np.mean(mae(estimated, ground_truth.T))
+                Corr[i, j] = np.corrcoef(estimated.flatten(), ground_truth.T.flatten())[0, 1]
+            else:
+                RMSE[i, j] = np.mean(rmse(estimated[:, 0:-1] / np.sum(estimated[:, 0:-1], axis=1)[:, np.newaxis], ground_truth.T))
+                MAE[i, j] = np.mean(mae(estimated[:, 0:-1] / np.sum(estimated[:, 0:-1], axis=1)[:, np.newaxis], ground_truth.T))
+                Corr[i, j] = np.corrcoef((estimated[:, 0:-1] / np.sum(estimated[:, 0:-1], axis=1)[:, np.newaxis]).flatten(), ground_truth.T.flatten())[0, 1]
 
     np.save('results/RMSE_%s.npy' %method, RMSE)
     np.save('results/MAE_%s.npy' %method, MAE)
