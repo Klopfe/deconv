@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sparse_ho.algo.forward import get_beta_jac_iterdiff
-from sparse_ho import Forward
+from sparse_ho import ImplicitForward
 from sparse_ho import grad_search, hyperopt_wrapper
 from sparse_ho.models import SimplexSVR
 from sparse_ho.criterion import HeldOutMSE, CrossVal
@@ -14,6 +14,7 @@ from sklearn.svm import NuSVR
 import cvxpy as cp
 from cvxopt import matrix
 from cvxopt import solvers
+from sklearn.model_selection import KFold
 
 def Linear_regression_constrained(X,y, intercept=False):
     
@@ -127,8 +128,9 @@ def cibersort(signature, data):
     return np.array(estimated_proportions)
 
 def deconv_ssvr(signature, data, rnaseq=False):
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
     n_try = data.shape[1]
-    tol = 1e-3
+    tol = 1e-7
     max_iter = 50000
     n_samples = data.shape[0]
     idx_train = np.arange(0, n_samples)
@@ -140,18 +142,19 @@ def deconv_ssvr(signature, data, rnaseq=False):
         y = data[:, i]
         y = (y - np.mean(signature)) / np.std(signature)
         model = SimplexSVR(max_iter=max_iter)
-        criterion = HeldOutMSE(idx_train, idx_val)
+        criterion = HeldOutMSE(None, None)
+        cross_val = CrossVal(criterion, cv=kf)
         monitor = Monitor()
-        # algo = ImplicitForward(n_iter_jac=1000, tol_jac=1e-3, max_iter=max_iter)
-        algo = Forward()
+        algo = ImplicitForward(n_iter_jac=10000, tol_jac=1e-7, max_iter=max_iter)
+        # algo = Forward()
         optimizer = GradientDescent(
-            n_outer=20, tol=tol, p_grad0=0.2, verbose=True)
+            n_outer=10, tol=tol, p_grad0=0.5, verbose=True)
         
 
         C0 = 1.0
         epsilon0 = 0.1
         grad_search(
-            algo, criterion, model, optimizer, X, y, np.array([C0, epsilon0]),
+            algo, cross_val, model, optimizer, X, y, np.array([C0, epsilon0]),
             monitor)
         supp, dense, jac1 = get_beta_jac_iterdiff(
             X, y, np.log(monitor.alphas[-1]),
