@@ -67,6 +67,13 @@ def Linear_regression_constrained(X,y, intercept=False):
 def SOLS(signature, data):
     n_try = data.shape[1]
     estimated_proportions = []
+    # concat_mat = np.concatenate((signature, data), axis=1)
+    # row_min = np.min(concat_mat, axis=1)
+    # row_max = np.max(concat_mat, axis=1)
+    # signature = (signature.T - row_min) / (row_max - row_min)
+    # signature = signature.T
+    # data = (data.T - row_min) / (row_max - row_min)
+    # data = data.T
     # signature = (signature - np.mean(signature)) / np.std(signature)
     for i in range(n_try):
         y = data[:, i]
@@ -130,31 +137,38 @@ def cibersort(signature, data):
 def deconv_ssvr(signature, data, rnaseq=False):
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
     n_try = data.shape[1]
-    tol = 1e-7
+    tol = 1e-5
     max_iter = 50000
     n_samples = data.shape[0]
     idx_train = np.arange(0, n_samples)
     idx_val = np.arange(0, n_samples)
     X = signature.copy()
-    X = (X - np.mean(X)) / np.std(X)
+    concat_mat = np.concatenate((X, data), axis=1)
+    row_min = np.min(concat_mat, axis=1)
+    row_max = np.max(concat_mat, axis=1)
+    X = (X.T - row_min) / (row_max - row_min)
+    X = X.T
+    data = (data.T - row_min) / (row_max - row_min)
+    data = data.T
+    # X = (X - np.mean(X)) / np.std(X)
     estimated_proportions = []
     for i in range(n_try):
         y = data[:, i]
-        y = (y - np.mean(signature)) / np.std(signature)
+        # y = (y - np.mean(signature)) / np.std(signature)
         model = SimplexSVR(max_iter=max_iter)
-        criterion = HeldOutMSE(None, None)
+        criterion = HeldOutMSE(idx_train, idx_val)
         cross_val = CrossVal(criterion, cv=kf)
         monitor = Monitor()
-        algo = ImplicitForward(n_iter_jac=10000, tol_jac=1e-7, max_iter=max_iter)
+        algo = ImplicitForward(n_iter_jac=10000, tol_jac=1e-5, max_iter=max_iter)
         # algo = Forward()
         optimizer = GradientDescent(
-            n_outer=10, tol=tol, p_grad0=0.5, verbose=True)
+            n_outer=10, tol=tol, p_grad0=0.3, verbose=True)
         
 
-        C0 = 1.0
+        C0 = 10.0
         epsilon0 = 0.1
         grad_search(
-            algo, cross_val, model, optimizer, X, y, np.array([C0, epsilon0]),
+            algo, criterion, model, optimizer, X, y, np.array([C0, epsilon0]),
             monitor)
         supp, dense, jac1 = get_beta_jac_iterdiff(
             X, y, np.log(monitor.alphas[-1]),
