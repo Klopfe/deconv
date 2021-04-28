@@ -3,7 +3,7 @@ import pandas as pd
 from sparse_ho.algo.forward import get_beta_jac_iterdiff
 from sparse_ho import ImplicitForward
 from sparse_ho import grad_search, hyperopt_wrapper
-from sparse_ho.models import SimplexSVR
+from sparse_ho.models import SimplexSVR, NNSVR
 from sparse_ho.criterion import HeldOutMSE, CrossVal
 from sparse_ho.optimizers import LineSearchWolfe, GradientDescent
 from sparse_ho.utils import Monitor
@@ -62,22 +62,16 @@ def Linear_regression_constrained(X,y, intercept=False):
         solution = sol['x'][1:(n+1)]
     else:
         solution=sol['x'][:n]
-    return(np.asarray(solution).flatten())
+    result = np.asarray(solution).flatten()
+
+    return result
 
 def SOLS(signature, data):
     n_try = data.shape[1]
     estimated_proportions = []
-    # concat_mat = np.concatenate((signature, data), axis=1)
-    # row_min = np.min(concat_mat, axis=1)
-    # row_max = np.max(concat_mat, axis=1)
-    # signature = (signature.T - row_min) / (row_max - row_min)
-    # signature = signature.T
-    # data = (data.T - row_min) / (row_max - row_min)
-    # data = data.T
-    # signature = (signature - np.mean(signature)) / np.std(signature)
+
     for i in range(n_try):
         y = data[:, i]
-        # y = (y - np.mean(y)) / np.std(y)
         sol = Linear_regression_constrained(signature, y, intercept=False)
         estimated_proportions.append(sol)
     
@@ -134,7 +128,7 @@ def cibersort(signature, data):
     
     return np.array(estimated_proportions)
 
-def deconv_ssvr(signature, data, rnaseq=False):
+def deconv_ssvr(signature, data, rnaseq=False, sum_to_one=True):
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
     n_try = data.shape[1]
     tol = 1e-5
@@ -143,39 +137,51 @@ def deconv_ssvr(signature, data, rnaseq=False):
     idx_train = np.arange(0, n_samples)
     idx_val = np.arange(0, n_samples)
     X = signature.copy()
-    concat_mat = np.concatenate((X, data), axis=1)
-    row_min = np.min(concat_mat, axis=1)
-    row_max = np.max(concat_mat, axis=1)
-    X = (X.T - row_min) / (row_max - row_min)
-    X = X.T
-    data = (data.T - row_min) / (row_max - row_min)
-    data = data.T
-    # X = (X - np.mean(X)) / np.std(X)
+    # concat_mat = np.concatenate((X, data), axis=1)
+    # row_min = np.min(concat_mat, axis=1)
+    # row_max = np.max(concat_mat, axis=1)
+    # X = (X.T - row_min) / (row_max - row_min)
+    # X = X.T
+    # data = (data.T - row_min) / (row_max - row_min)
+    # data = data.T
+    # mean = np.mean(X)
+    # X = (X - mean) / np.std(X)
     estimated_proportions = []
     for i in range(n_try):
         y = data[:, i]
-        # y = (y - np.mean(signature)) / np.std(signature)
-        model = SimplexSVR(max_iter=max_iter)
-        criterion = HeldOutMSE(idx_train, idx_val)
+        X = signature.copy()
+        concat_mat = np.concatenate((X, y[:, np.newaxis]), axis=1)
+        row_min = np.min(concat_mat, axis=1)
+        row_max = np.max(concat_mat, axis=1)
+        X = (X.T - row_min) / (row_max - row_min)
+        X = X.T
+        y = (y - row_min) / (row_max - row_min)
+        if sum_to_one:
+            model = SimplexSVR(max_iter=max_iter)
+        else:
+            model = NNSVR(max_iter=max_iter)
+        criterion = HeldOutMSE(None, None)
         cross_val = CrossVal(criterion, cv=kf)
         monitor = Monitor()
         algo = ImplicitForward(n_iter_jac=10000, tol_jac=1e-5, max_iter=max_iter)
         # algo = Forward()
         optimizer = GradientDescent(
-            n_outer=10, tol=tol, p_grad0=0.3, verbose=True)
+            n_outer=10, tol=tol, p_grad0=1.0, verbose=True)
         
 
-        C0 = 10.0
+        C0 = 1.0
         epsilon0 = 0.1
         grad_search(
-            algo, criterion, model, optimizer, X, y, np.array([C0, epsilon0]),
+            algo, cross_val, model, optimizer, X, y, np.array([C0, epsilon0]),
             monitor)
+
         supp, dense, jac1 = get_beta_jac_iterdiff(
             X, y, np.log(monitor.alphas[-1]),
             tol=tol, model=model, max_iter=max_iter)
         proportions = np.zeros(X.shape[1])
         proportions[supp] = dense
-
+        if sum_to_one == False:
+            proportions = proportions / np.sum(proportions)
         estimated_proportions.append(proportions)
 
     estimated_proportions =  np.array(estimated_proportions)
