@@ -9,20 +9,28 @@ from itertools import product
 import pandas as pd
 from deconv.deconv_methods import *
 from deconv.utils import semi_synth_data, mae, rmse
-import scanpy
+# import scanpy
 
-X = pd.read_csv("path_to_scaden_signature.txt", header=0, index_col=0, delimiter="\t")
-anndata = scanpy.read_h5ad('/work/imb/qu2140kl/pbmc_data.h5ad')
-Y = pd.DataFrame(anndata.X.T, index=anndata.var.index)
+# X = pd.read_csv("path_to_scaden_signature.txt", header=0, index_col=0, delimiter="\t")
+# anndata = scanpy.read_h5ad('/work/imb/qu2140kl/pbmc_data.h5ad')
+# Y = pd.DataFrame(anndata.X.T, index=anndata.var.index)
 
-Y = Y[Y.index.isin(X.index)]
-X.sort_index(inplace=True)
-X = np.array(X)
-Y.sort_index(inplace=True)
-Y = np.array(Y)
+# Y = Y[Y.index.isin(X.index)]
+# X.sort_index(inplace=True)
+# X = np.array(X)
+# Y.sort_index(inplace=True)
+# Y = np.array(Y)
+
+# CD4, Mono, CD8, B, NK, unknown
+X = np.load("X.npy")
+Y = np.load("Y.npy")
+
+ground_truth10 = pd.read_csv("ground_truth_10.txt", header=0, index_col=0, delimiter="\t")
+
+
 
 # generate pseudo simulated data
-estimated_ssvr = deconv_ssvr(X, Y)
+estimated_ssvr = deconv_ssvr(X, Y, rnaseq=True)
 estimated_cibersort = cibersort(X, Y)
 estimated_SOLS = SOLS(X, Y)
 

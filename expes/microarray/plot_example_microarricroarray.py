@@ -9,16 +9,15 @@ current_palette = sns.color_palette("colorblind")
 
 # plot figure 
 dict_res = {}
-dict_res["ssvr"] = np.load('estimated_ssvr.npy')
-dict_res["ssvr"] = np.load('estimated_ssvr.npy')
-dict_res["cibersort"] = np.load('estimated_cibersort.npy')
-dict_res["SOLS"] = np.load('estimated_SOLS.npy')
+dict_res["ssvr"] = np.load('results/estimated_ssvr.npy')
+dict_res["cibersort"] = np.load('results/estimated_cibersort.npy')
+dict_res["SOLS"] = np.load('results/estimated_SOLS.npy')
 
-ground_truth = np.load('ground_truth_simu.npy')
+ground_truth = np.load('results/ground_truth_simu.npy')
 
 dict_method = {}
 dict_method['ssvr'] = "Simplex SVR"
-dict_method['SOLS'] = "Simplex Least Squares"
+dict_method['SOLS'] = "Simplex OLS"
 dict_method['cibersort'] = "Cibersort" 
 
 
@@ -48,7 +47,7 @@ for i, method in enumerate(methods):
     axarr[i, 0].set_ylabel(string_ylabel)
 
 
-save_fig = True
+save_fig = False
 # save_fig = False
 
 if save_fig:

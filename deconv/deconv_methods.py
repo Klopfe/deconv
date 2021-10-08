@@ -72,7 +72,14 @@ def SOLS(signature, data):
 
     for i in range(n_try):
         y = data[:, i]
-        sol = Linear_regression_constrained(signature, y, intercept=False)
+        X = signature.copy()
+        concat_mat = np.concatenate((X, y[:, np.newaxis]), axis=1)
+        row_min = np.min(concat_mat, axis=1)
+        row_max = np.max(concat_mat, axis=1)
+        # X = (X.T - row_min) / (row_max - row_min)
+        # X = X.T
+        # y = (y - row_min) / (row_max - row_min)
+        sol = Linear_regression_constrained(X, y, intercept=False)
         estimated_proportions.append(sol)
     
     return np.array(estimated_proportions)
@@ -136,16 +143,9 @@ def deconv_ssvr(signature, data, rnaseq=False, sum_to_one=True):
     n_samples = data.shape[0]
     idx_train = np.arange(0, n_samples)
     idx_val = np.arange(0, n_samples)
-    X = signature.copy()
-    # concat_mat = np.concatenate((X, data), axis=1)
-    # row_min = np.min(concat_mat, axis=1)
-    # row_max = np.max(concat_mat, axis=1)
-    # X = (X.T - row_min) / (row_max - row_min)
-    # X = X.T
-    # data = (data.T - row_min) / (row_max - row_min)
-    # data = data.T
-    # mean = np.mean(X)
-    # X = (X - mean) / np.std(X)
+    # X = signature.copy()
+    # signature = (signature - np.mean(signature)) / np.std(signature)
+
     estimated_proportions = []
     for i in range(n_try):
         y = data[:, i]
@@ -156,23 +156,24 @@ def deconv_ssvr(signature, data, rnaseq=False, sum_to_one=True):
         X = (X.T - row_min) / (row_max - row_min)
         X = X.T
         y = (y - row_min) / (row_max - row_min)
+        # y = (y - np.mean(y)) / np.std(y)
         if sum_to_one:
             model = SimplexSVR(max_iter=max_iter)
         else:
             model = NNSVR(max_iter=max_iter)
-        criterion = HeldOutMSE(None, None)
+        criterion = HeldOutMSE(idx_train, idx_val)
         cross_val = CrossVal(criterion, cv=kf)
         monitor = Monitor()
         algo = ImplicitForward(n_iter_jac=10000, tol_jac=1e-5, max_iter=max_iter)
         # algo = Forward()
         optimizer = GradientDescent(
-            n_outer=10, tol=tol, p_grad0=1.0, verbose=True)
+            n_outer=10, tol=tol, p_grad0=0.8, verbose=True)
         
 
         C0 = 1.0
         epsilon0 = 0.1
         grad_search(
-            algo, cross_val, model, optimizer, X, y, np.array([C0, epsilon0]),
+            algo, criterion, model, optimizer, X, y, np.array([C0, epsilon0]),
             monitor)
 
         supp, dense, jac1 = get_beta_jac_iterdiff(
