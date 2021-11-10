@@ -1,11 +1,12 @@
 =========================
- Python Project Template
+AC-SVR deconvolution tool
 =========================
 
 .. image:: https://travis-ci.org/seanfisk/python-project-template.png
    :target: https://travis-ci.org/seanfisk/python-project-template
 
-This project provides a best-practices template Python project which integrates several different tools. It saves you work by setting up a number of things, including documentation, code checking, and unit test runners.
+AC-SVR is a deconvolution method based on Constrained Support Vector Regression. 
+The estimation process relies on an efficient hyperparameters selection based on automatic differentiation.
 
 As it is an all-in-one solution, the tools used are rather opinionated. They include:
 
