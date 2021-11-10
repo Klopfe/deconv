@@ -1,22 +1,22 @@
 import numpy as np
+from numpy.core.numeric import cross
 import pandas as pd
-from sparse_ho.algo.forward import get_beta_jac_iterdiff
+from sparse_ho.algo.forward import compute_beta
 from sparse_ho import ImplicitForward
 from sparse_ho import grad_search, hyperopt_wrapper
-from sparse_ho.models import SimplexSVR, NNSVR
+from sparse_ho.models import SimplexSVR
 from sparse_ho.criterion import HeldOutMSE, CrossVal
-from sparse_ho.optimizers import LineSearchWolfe, GradientDescent
+from sparse_ho.optimizers import GradientDescent
 from sparse_ho.utils import Monitor
 from sparse_ho.grid_search import grid_search
 from sparse_ho.tests.cvxpylayer import ssvr_cvxpy
-from sklearn.preprocessing import minmax_scale
 from sklearn.svm import NuSVR 
 import cvxpy as cp
 from cvxopt import matrix
 from cvxopt import solvers
 from sklearn.model_selection import KFold
 
-def Linear_regression_constrained(X,y, intercept=False):
+def Linear_regression_constrained(X,y, intercept=False, sum_to_one=True):
     
     if intercept:
         X=np.hstack((np.reshape(np.repeat(1.0,X.shape[0]),(X.shape[0],1)),X))
@@ -56,8 +56,11 @@ def Linear_regression_constrained(X,y, intercept=False):
     b=matrix(1.0)
 
     solvers.options['show_progress'] = False
+    if sum_to_one:
+        sol= solvers.qp(Q,L,G,h,A,b)
+    else:
+        sol= solvers.qp(Q,L,G,h)
 
-    sol= solvers.qp(Q,L,G,h,A,b)
     if intercept:
         solution = sol['x'][1:(n+1)]
     else:
@@ -72,7 +75,8 @@ def SOLS(signature, data):
 
     for i in range(n_try):
         y = data[:, i]
-        sol = Linear_regression_constrained(signature, y, intercept=False)
+        X = signature.copy()
+        sol = Linear_regression_constrained(X, y, intercept=False)
         estimated_proportions.append(sol)
     
     return np.array(estimated_proportions)
@@ -117,7 +121,7 @@ def single_cibersort(signature, y, tol, max_iter):
 
 def cibersort(signature, data):
     n_try = data.shape[-1]
-    tol=1e-3
+    tol=1e-4
     max_iter = 50000
     estimated_proportions = []
     # data = quantile_normalize(data)
@@ -128,60 +132,51 @@ def cibersort(signature, data):
     
     return np.array(estimated_proportions)
 
-def deconv_ssvr(signature, data, rnaseq=False, sum_to_one=True):
-    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+def deconv_ssvr(signature, data):
+    kf = KFold(n_splits=5)
     n_try = data.shape[1]
     tol = 1e-5
     max_iter = 50000
     n_samples = data.shape[0]
-    idx_train = np.arange(0, n_samples)
-    idx_val = np.arange(0, n_samples)
-    X = signature.copy()
-    # concat_mat = np.concatenate((X, data), axis=1)
-    # row_min = np.min(concat_mat, axis=1)
-    # row_max = np.max(concat_mat, axis=1)
-    # X = (X.T - row_min) / (row_max - row_min)
-    # X = X.T
-    # data = (data.T - row_min) / (row_max - row_min)
-    # data = data.T
-    # mean = np.mean(X)
-    # X = (X - mean) / np.std(X)
     estimated_proportions = []
+    X = signature.copy()
+    concat_mat = np.concatenate((X, data), axis=1)
+    row_min = np.min(concat_mat, axis=1)
+    row_max = np.max(concat_mat, axis=1)   
+    X = (X.T - row_min) / (row_max - row_min)
+    X = X.T
+
     for i in range(n_try):
         y = data[:, i]
-        X = signature.copy()
-        concat_mat = np.concatenate((X, y[:, np.newaxis]), axis=1)
-        row_min = np.min(concat_mat, axis=1)
-        row_max = np.max(concat_mat, axis=1)
-        X = (X.T - row_min) / (row_max - row_min)
-        X = X.T
         y = (y - row_min) / (row_max - row_min)
-        if sum_to_one:
-            model = SimplexSVR(max_iter=max_iter)
-        else:
-            model = NNSVR(max_iter=max_iter)
+        # find good initialization for epsilon
+        coefs_SOLS = Linear_regression_constrained(X, y, intercept=False, sum_to_one=True)
+        absolute_residuals = np.abs(y - X @ coefs_SOLS.T)
+        init_epsilon = np.quantile(absolute_residuals, 0.1)
+        model = SimplexSVR()
+
+        # criterion = HeldOutMSE(np.arange(0, n_samples), np.arange(0, n_samples))
         criterion = HeldOutMSE(None, None)
         cross_val = CrossVal(criterion, cv=kf)
         monitor = Monitor()
-        algo = ImplicitForward(n_iter_jac=10000, tol_jac=1e-5, max_iter=max_iter)
+        algo = ImplicitForward(n_iter_jac=1000, tol_jac=1e-5, max_iter=max_iter)
         # algo = Forward()
         optimizer = GradientDescent(
-            n_outer=10, tol=tol, p_grad0=1.0, verbose=True)
+            n_outer=10, tol=tol, p_grad_norm=0.8, verbose=True)
         
 
-        C0 = 1.0
-        epsilon0 = 0.1
+        C0 = 0.1
+        epsilon0 = init_epsilon
         grad_search(
             algo, cross_val, model, optimizer, X, y, np.array([C0, epsilon0]),
             monitor)
 
-        supp, dense, jac1 = get_beta_jac_iterdiff(
+        supp, dense, _ = compute_beta(
             X, y, np.log(monitor.alphas[-1]),
             tol=tol, model=model, max_iter=max_iter)
         proportions = np.zeros(X.shape[1])
         proportions[supp] = dense
-        if sum_to_one == False:
-            proportions = proportions / np.sum(proportions)
+
         estimated_proportions.append(proportions)
 
     estimated_proportions =  np.array(estimated_proportions)

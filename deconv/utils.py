@@ -3,11 +3,32 @@ import pandas as pd
 from sklearn.utils import check_random_state
 from numpy.linalg import norm
 
+def clean_mixture_signature(mixture, signature):
+    signature.sort_index(inplace=True)
+    mixture.sort_index(inplace=True)
+    signature = signature[signature.index.isin(mixture.index)]
+    genes_to_keep = mixture.index.isin(signature.index)
+    signature = np.array(signature)
+    mixture = np.array(mixture)
+    mixture = mixture[genes_to_keep, :]
+
+    return signature, mixture
+
+def my_corr(x, y, rep=None):
+    if rep is not None:
+        res = np.zeros(rep)
+        for i in range(rep):
+            res[i] = np.corrcoef(x[i, :], y[i, :])[0, 1]
+        
+        return res
+    else:
+        return np.corrcoef(x.flatten(), y.flatten())[0, 1]
+
 def rmse(X, Y, axis=1):
     if axis is None:
-        return np.mean((X - Y) ** 2)
+        return np.sqrt(np.mean((X - Y) ** 2))
     else:
-        return np.mean((X - Y) ** 2, axis=axis)
+        return np.sqrt(np.mean((X - Y) ** 2, axis=axis))
 
 def mae(X, Y, axis=1):
     return np.mean(np.abs(X - Y), axis=axis)
