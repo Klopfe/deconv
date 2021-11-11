@@ -1,4 +1,4 @@
-name: sparse-ho-env
+name: deconv-env
 
 dependencies:
     - ipython
