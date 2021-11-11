@@ -3,6 +3,8 @@ import pandas
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib
+from deconv.utils import mae
+
 
 def configure_plt():
     params = {'axes.labelsize': 12,
@@ -18,8 +20,10 @@ def configure_plt():
     sns.set_context("poster")
     sns.set_style("ticks")
 
+
 configure_plt()
 fontsize = 48
+
 
 def heatmap(data, row_labels, col_labels, ax=None,
             cbar_kw={}, cbarlabel="", **kwargs):
@@ -139,20 +143,19 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 
     return texts
 
+
 def rmse(x, y, rep=None):
     if rep is not None:
         res = np.zeros(rep)
         for i in range(rep):
             res[i] = np.sqrt(np.mean((x[i, :] - y[i, :]) ** 2))
-        
+
         return res
     else:
         return np.sqrt(np.mean((x - y) ** 2))
-save_fig = True
-# save_fig = True
-# configure_plt()
-# init()
 
+
+save_fig = True
 fontsize = 16
 medianprops = dict(color='black')
 
@@ -160,10 +163,13 @@ current_palette = sns.color_palette("colorblind")
 plt.close('all')
 
 
-list_methods = ["SSVR", "Cibersort", "SOLS",  "FARDEEP", "EPIC", "hspe", "DeconRNAseq"]
-list_labels = ["AC-SVR", 'Cibersort', 'SOLS', 'FARDEEP', "HSPE", "EPIC", "DeconRNA"]
+list_methods = ["SSVR", "Cibersort", "SOLS",
+                "FARDEEP", "EPIC", "hspe", "DeconRNAseq"]
+list_labels = ["AC-SVR", 'Cibersort', 'SOLS',
+               'FARDEEP', "HSPE", "EPIC", "DeconRNA"]
 
-list_cells = ["B-cells", "CD8 T-cells", "CD4 T-cells", "NK cells", "Monocytes", "Neutrophilis"]
+list_cells = ["B-cells", "CD8 T-cells", "CD4 T-cells",
+              "NK cells", "Monocytes", "Neutrophilis"]
 df = pandas.read_pickle("results_rnasimulated.pkl")
 
 list_noise = ['Gaussian', "logGaussian"]
@@ -178,7 +184,6 @@ dict_threshold["logGaussian"] = 0.17
 fig, axarr = plt.subplots(
     2, 2, sharex=False, sharey=False, figsize=[20, 20])
 for idx, noise in enumerate(list_noise):
-    
 
     df_data = df[df['noise'] == noise]
     results = np.zeros((110, len(list_methods)))
@@ -190,51 +195,47 @@ for idx, noise in enumerate(list_noise):
         temp2 = []
         for i in df_method.index:
             estimated = df_method['estimated'][i]
-            temp.append(rmse(estimated, df_method['ground truth'][i].T, rep=10))
-            temp2.append(rmse(estimated.T, df_method['ground truth'][i], rep=6))
+            temp.append(
+                rmse(estimated, df_method['ground truth'][i].T, rep=10))
+            temp2.append(
+                rmse(estimated.T, df_method['ground truth'][i], rep=6))
         results[:, idx2] = np.array(temp).flatten()
         results_cells[:, idx2] = np.mean(np.array(temp2), axis=0)
-
 
     axarr[idx, 0].set_title(dict_noise[noise])
     axarr[idx, 0].set_xticklabels(list_labels)
     axarr[idx, 0].set_ylabel("RMSE")
-    bplot1 = axarr[idx, 0].boxplot(results, patch_artist=True, medianprops=medianprops)
+    bplot1 = axarr[idx, 0].boxplot(
+        results, patch_artist=True, medianprops=medianprops)
 
-        # fill with colors
-    colors = [current_palette[0], current_palette[1], current_palette[2], current_palette[3], current_palette[4], current_palette[5], current_palette[6], current_palette[7]]
+    # fill with colors
+    colors = [current_palette[i] for i in range(len(list_methods))]
 
     for patch, color in zip(bplot1['boxes'], colors):
         patch.set_facecolor(color)
-    
 
-    im, cbar = heatmap(results_cells.T, list_labels, np.array(list_cells), ax=axarr[idx, 1],
-                    cmap="PuOr", cbarlabel="RMSE")
-    texts = annotate_heatmap(im, valfmt="{x:.2f}", size=16, threshold=dict_threshold[noise])
+    im, cbar = heatmap(
+        results_cells.T, list_labels, np.array(list_cells), ax=axarr[idx, 1],
+        cmap="PuOr", cbarlabel="RMSE")
+    texts = annotate_heatmap(
+        im, valfmt="{x:.2f}", size=16, threshold=dict_threshold[noise])
     # fig2.tight_layout()
     # fig2.show()
 
 fig.tight_layout()
+
+dir_to_save = ("/Users/quentin.klopfenstein/Documents/deconvolution_SSVR/",
+               "Manuscript/figures/")
 if save_fig:
-    fig.savefig("/Users/quentin.klopfenstein/Documents/deconvolution_SSVR/Manuscript/figures/simulated_rna_rmse.pdf")
+    fig.savefig(dir_to_save + "simulated_rna_rmse.pdf")
 fig.show()
 
-def mad(x, y, rep=None):
-    if rep is not None:
-        res = np.zeros(rep)
-        for i in range(rep):
-            res[i] = np.mean(np.abs(x[i, :] - y[i, :]))
-        
-        return res
-    else:
-        return np.mean(np.abs(x - y))
 
 fig2, axarr2 = plt.subplots(
     2, 2, sharex=False, sharey=False, figsize=[20, 20])
 
 
 for idx, noise in enumerate(list_noise):
-    
 
     df_data = df[df['noise'] == noise]
     results = np.zeros((110, len(list_methods)))
@@ -246,31 +247,32 @@ for idx, noise in enumerate(list_noise):
         temp2 = []
         for i in df_method.index:
             estimated = df_method['estimated'][i]
-            temp.append(mad(estimated, df_method['ground truth'][i].T, rep=10))
-            temp2.append(mad(estimated.T, df_method['ground truth'][i], rep=6))
+            temp.append(mae(estimated, df_method['ground truth'][i].T, rep=10))
+            temp2.append(mae(estimated.T, df_method['ground truth'][i], rep=6))
         results[:, idx2] = np.array(temp).flatten()
         results_cells[:, idx2] = np.mean(np.array(temp2), axis=0)
-
 
     axarr2[idx, 0].set_title(dict_noise[noise])
     axarr2[idx, 0].set_xticklabels(list_labels)
     axarr2[idx, 0].set_ylabel("MAE")
-    bplot1 = axarr2[idx, 0].boxplot(results, patch_artist=True, medianprops=medianprops)
+    bplot1 = axarr2[idx, 0].boxplot(
+        results, patch_artist=True, medianprops=medianprops)
 
-        # fill with colors
-    colors = [current_palette[0], current_palette[1], current_palette[2], current_palette[3], current_palette[4], current_palette[5], current_palette[6], current_palette[7]]
+    # fill with colors
+    colors = [current_palette[i] for i in range(len(list_methods))]
 
     for patch, color in zip(bplot1['boxes'], colors):
         patch.set_facecolor(color)
-    
 
-    im, cbar = heatmap(results_cells.T, list_labels, np.array(list_cells), ax=axarr2[idx, 1],
-                    cmap="PuOr", cbarlabel="MAE")
-    texts = annotate_heatmap(im, valfmt="{x:.2f}", size=16, threshold=dict_threshold[noise])
+    im, cbar = heatmap(
+        results_cells.T, list_labels, np.array(list_cells), ax=axarr2[idx, 1],
+        cmap="PuOr", cbarlabel="MAE")
+    texts = annotate_heatmap(
+        im, valfmt="{x:.2f}", size=16, threshold=dict_threshold[noise])
     # fig2.tight_layout()
     # fig2.show()
 
 fig2.tight_layout()
 if save_fig:
-    fig2.savefig("/Users/quentin.klopfenstein/Documents/deconvolution_SSVR/Manuscript/figures/simulated_rna_mae.pdf")
+    fig2.savefig(dir_to_save + "simulated_rna_mae.pdf")
 fig2.show()

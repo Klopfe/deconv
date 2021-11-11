@@ -9,7 +9,8 @@ package = 'deconv'
 project = "Deconvolution methods in python"
 project_no_spaces = project.replace(' ', '')
 version = '0.1'
-description = 'Implements deconvolution methods for the estimation of cells inside a tumor'
+description = '''Implements deconvolution methods for the estimation
+    of cells inside a tumor'''
 authors = ['Quentin Klopfenstein']
 authors_string = ', '.join(authors)
 emails = ['quentin.klopfenstein@u-bourgogne.fr']

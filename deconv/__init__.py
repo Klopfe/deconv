@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Implements deconvolution methods for the estimation of cells inside a tumor"""
+"""Implements deconvolution methods for the estimation
+    of cells inside a tumor"""
 
 from deconv import metadata
 
