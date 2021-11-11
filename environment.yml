@@ -11,9 +11,7 @@ dependencies:
     - pip
     - pandas
     - joblib
-    - itertools
     - rpy2
-    - pylab
     
     - pip:
         - cvxopt
@@ -22,3 +20,7 @@ dependencies:
         - cvxpy
         - torch
         - cvxpylayers
+        - pylab
+        - itertools
+        
+        
