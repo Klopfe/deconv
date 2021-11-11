@@ -12,9 +12,10 @@ dependencies:
     - pandas
     - joblib
     - rpy2
-    
+    - cvxopt
+
     - pip:
-        - cvxopt
+
         - download
         - hyperopt
         - cvxpy
