@@ -1,5 +1,5 @@
 # Automatic hyperparameters selection and Constrained Support Vector Regression for deconvolution
-
+![Build](https://github.com/Klopfe/deconv/workflows/build/badge.svg?branch=master)
 ![](docs/img/intro_ACSVR.png)
 ___
 AC-SVR relies on the Support Vector Regression estimator as already used by Cibersort.
@@ -25,3 +25,4 @@ or its user version to install locally
 ---
 
 ## Cite
+
