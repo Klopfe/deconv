@@ -23,6 +23,7 @@ or its user version to install locally
 ## Documentation and examples
 
 ---
+You can find detailed documentation and examples on this jupyter notebook vignette, clicking [here](https://github.com/Klopfe/deconv/blob/master/docs/vignette/Vignette.ipynb).
 
 ## Cite
 
