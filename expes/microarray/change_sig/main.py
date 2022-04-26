@@ -6,7 +6,6 @@ from deconv.deconv_methods import SOLS, deconv_ssvr, cibersort
 from deconv.utils import clean_mixture_signature
 import rpy2.robjects as robjects
 from rpy2.robjects import pandas2ri
-from deconv.constrained_nuSVR import ICE
 from deconv.utils import rmse, mae
 
 # Give a list of datasets names for the experiment
@@ -16,9 +15,9 @@ list_datasets = ["abbas", "becht", "gong", "kuhn", "newman_fl",
 list_competitors = ["ssvr", "cibersort", "sols", "fardeep",  "hspe", "EPIC"]
 
 
-path_to_dir = "/Users/quentin.klopfenstein/Documents/deconvolution_SSVR/" + \
+path_to_dir = "~/deconvolution_SSVR/" + \
     "Data/microarray/"
-dir_to_competitors = "/Users/quentin.klopfenstein/Documents/deconvolution_SSVR" + \
+dir_to_competitors = "~/deconvolution_SSVR" + \
     "/Analysis/deconv/deconv/competitors/"
 
 
@@ -63,9 +62,6 @@ def parallel_function(dataset, competitor):
                 estimated_prop = cibersort(X, Y)
             elif competitor == "sols":
                 estimated_prop = SOLS(X, Y)
-
-            elif competitor == 'ice':
-                estimated_prop = ICE(X, Y)
 
             elif competitor == "fardeep":
                 robjects.r['setwd'](path_to_dir)
