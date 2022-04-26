@@ -5,27 +5,10 @@
 ## Author: Quentin Klopfenstein
 ## Date: 20/09/2021
 ################################################################################################################################################
-source("~/deconvolution_SSVR/Analysis/deconv/expes/rnaseq/simulated_rna/FARDEEP/sourcecode/fardeep_function.R")
-source("~/deconvolution_SSVR/Analysis/deconv/expes/rnaseq/simulated_rna/FARDEEP/sourcecode/Tuning_BIC.R")
-
+library(FARDEEP)
 
 fardeep_perso = function(Signature, Mixture){
-  n     = nrow(Mixture)
-  p     = ncol(Signature)
-  n.col = ncol(Mixture)
-  beta.fardeep = matrix(0, n.col, p)
-  para  = NULL
-  nout = NULL
-  
-  for (i in 1:n.col){
-    y = Mixture [, i]
-    x = as.matrix(Signature)
-    k = tuningBIC(x = x, y = y, n = n, p = p, intercept = TRUE)
-    para    = rbind (para, k)
-    reg     = fardeep(x = x, y = y, k = k, intercept = TRUE)
-    coe     = reg$beta[-1]
-    beta.fardeep[i, ] = coe / sum(coe)
-  }
+  results = fardeep(Signature, Mixture, alpha1=1, alpha2=1)
+  beta.fardeep = results$relative.beta
   return(beta.fardeep)
 }
-

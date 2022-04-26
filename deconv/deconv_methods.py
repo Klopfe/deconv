@@ -3,14 +3,15 @@ import pandas as pd
 from sparse_ho.algo.forward import compute_beta
 from sparse_ho import ImplicitForward
 from sparse_ho import grad_search
-from sparse_ho.models import SimplexSVR
+from sparse_ho.models import SimplexSVR, NNSVR
 from sparse_ho.criterion import HeldOutMSE, CrossVal
 from sparse_ho.optimizers import GradientDescent
 from sparse_ho.utils import Monitor
 from cvxopt import matrix
 from cvxopt import solvers
-from sklearn.model_selection import KFold
 from sklearn.svm import NuSVR
+from sklearn.model_selection import KFold
+# from sklearn.linear_model import LinearRegression
 
 
 def Linear_regression_constrained(X, y, intercept=False, sum_to_one=True):
@@ -73,7 +74,7 @@ def SOLS(signature, data):
     for i in range(n_try):
         y = data[:, i]
         X = signature.copy()
-        sol = Linear_regression_constrained(X, y, intercept=False)
+        sol = Linear_regression_constrained(X, y, intercept=True)
         estimated_proportions.append(sol)
 
     return np.array(estimated_proportions)
@@ -121,7 +122,7 @@ def single_cibersort(signature, y, tol, max_iter):
 def cibersort(signature, data):
     n_try = data.shape[-1]
     tol = 1e-4
-    max_iter = 50000
+    max_iter = 50_000
     estimated_proportions = []
     # data = quantile_normalize(data)
     signature = (signature - np.mean(signature)) / np.std(signature)
@@ -132,42 +133,38 @@ def cibersort(signature, data):
     return np.array(estimated_proportions)
 
 
-def deconv_ssvr(signature, data):
-    kf = KFold(n_splits=5)
+def deconv_ssvr(signature, data, sum_to_one=True):
     n_try = data.shape[1]
     tol = 1e-5
-    max_iter = 50000
+    max_iter = 50_000
     estimated_proportions = []
     X = signature.copy()
-    concat_mat = np.concatenate((X, data), axis=1)
-    row_min = np.min(concat_mat, axis=1)
-    row_max = np.max(concat_mat, axis=1)
+    mat = np.concatenate([X, data], axis=1)
+    row_min = np.min(mat, axis=1)
+    row_max = np.max(mat, axis=1)
+
     X = (X.T - row_min) / (row_max - row_min)
     X = X.T
-
     for i in range(n_try):
         y = data[:, i]
         y = (y - row_min) / (row_max - row_min)
         # find good initialization for epsilon
-        coefs_SOLS = Linear_regression_constrained(
-            X, y, intercept=False, sum_to_one=True)
-        absolute_residuals = np.abs(y - X @ coefs_SOLS.T)
-        init_epsilon = np.quantile(absolute_residuals, 0.1)
-        model = SimplexSVR()
-
-        # criterion = HeldOutMSE(
-        # np.arange(0, n_samples), np.arange(0, n_samples))
+        coefs_ols = Linear_regression_constrained(X, y, sum_to_one=sum_to_one)
+        res = y - X @ coefs_ols
+        epsilon0 = np.quantile(np.abs(res), 0.25)
+        # estimated_sigma = np.std(res[idx_val])
+        if sum_to_one:
+            model = SimplexSVR()
+        else:
+            model = NNSVR()
         criterion = HeldOutMSE(None, None)
-        cross_val = CrossVal(criterion, cv=kf)
+        cross_val = CrossVal(criterion, cv=KFold(n_splits=min(5, len(y))))
         monitor = Monitor()
         algo = ImplicitForward(
-            n_iter_jac=1000, tol_jac=1e-5, max_iter=max_iter)
-        # algo = Forward()
+            n_iter_jac=1_000, tol_jac=1e-3, max_iter=max_iter)
         optimizer = GradientDescent(
-            n_outer=10, tol=tol, p_grad_norm=0.8, verbose=True)
-
+            n_outer=10, tol=0.001, p_grad_norm=0.5, verbose=True)
         C0 = 0.1
-        epsilon0 = init_epsilon
         grad_search(
             algo, cross_val, model, optimizer, X, y, np.array([C0, epsilon0]),
             monitor)
@@ -175,10 +172,14 @@ def deconv_ssvr(signature, data):
         supp, dense, _ = compute_beta(
             X, y, np.log(monitor.alphas[-1]),
             tol=tol, model=model, max_iter=max_iter)
+        print(epsilon0, monitor.alphas[-1])
         proportions = np.zeros(X.shape[1])
         proportions[supp] = dense
-
+        if not sum_to_one:
+            if np.sum(proportions) != 0:
+                proportions /= np.sum(proportions)
+            else:
+                proportions = np.repeat(1 / len(proportions), len(proportions))
         estimated_proportions.append(proportions)
-
     estimated_proportions = np.array(estimated_proportions)
     return estimated_proportions

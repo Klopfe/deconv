@@ -5,6 +5,7 @@ import os
 import sys
 import imp
 import subprocess
+from setuptools import setup, find_packages
 
 ## Python 2.6 subprocess.check_output compatibility. Thanks Greg Hewgill!
 if 'check_output' not in dir(subprocess):
